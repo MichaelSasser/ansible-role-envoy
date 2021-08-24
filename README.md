@@ -1,4 +1,4 @@
-# Ansible Role: PostgreSQL
+# Ansible Role: Envoy
 
 An Ansible role, which installs and manages an Envoy Docker container.
 
