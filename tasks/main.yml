@@ -1,0 +1,65 @@
+---
+# tasks file for ansible-role-envoy
+
+- name: Ensure envoy image is pulled
+  docker_image:
+    name: "{{ envoy_docker_image }}"
+    tag: "{{ envoy_docker_image_tag }}"
+    source: pull
+
+# the /envoy/certs dir will be created by volumes later on
+- name: Ensure configuration dir is created
+  file:
+    path: "/envoy/config"
+    state: directory
+  notify:
+    - restart envoy
+
+- name: Ensure envoy configuration file is copied
+  template:
+    src: envoy-custom.yaml.j2
+    dest: /envoy/config/envoy-custom.yaml
+    owner: "101"
+    group: "101"
+    mode: 0600
+  notify:
+    - restart envoy
+
+- name: Change owner and group of certificates
+  ansible.builtin.file:
+    path: /etc/letsencrypt/live/
+    owner: "101"
+    group: "101"
+    recurse: true
+    mode: 0777
+  notify:
+    - restart envoy
+
+- name: Ensure envoy container runs
+  docker_container:
+    name: "{{ envoy_container_name }}"
+    image: "{{ envoy_docker_image }}:{{ envoy_docker_image_tag }}"
+    restart_policy: always
+    state: started
+    restart: yes
+    pull: "{{ envoy_upgrade | default(false) | bool }}"
+    memory: "{{ envoy_container_memory_limit | default(omit) }}"
+    volumes:
+      - /envoy/config/envoy-custom.yaml:/envoy/config/envoy-custom.yaml:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    ports:
+      - "{{ envoy_port }}:8080"
+      - "{{ envoy_port_ssl }}:4443"
+    env:
+      ENVOY_UID: "101"
+      ENVOY_GID: "101"
+    entrypoint: envoy
+    command: |
+      --config-path /envoy/config/envoy-custom.yaml
+    container_default_behavior: no_defaults
+    networks: "{{ envoy_networks }}"
+    networks_cli_compatible: yes
+    network_mode: default
+  register: envoy_container
+  notify:
+    - restart envoy
