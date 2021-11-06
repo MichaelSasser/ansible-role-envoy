@@ -1,12 +1,28 @@
 ---
 # handlers file for ansible-role-odoo
 
-- name: Restart Envoy
-  command: "docker restart {{ envoy_container_name }}"
-  listen: restart envoy
-
-- name: Wait until Envoy starts up
-  wait_for:
-    port: "{{ envoy_port }}"
-    delay: 5
-  listen: restart envoy
+- name: Ensure envoy container runs
+  docker_container:
+    name: "{{ envoy_container_name }}"
+    image: "{{ envoy_docker_image }}:{{ envoy_docker_image_tag }}"
+    restart_policy: always
+    state: started
+    restart: yes
+    memory: "{{ envoy_container_memory_limit | default(omit) }}"
+    volumes:
+      - /envoy/config/envoy-custom.yaml:/envoy/config/envoy-custom.yaml:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    ports:
+      - "{{ envoy_port }}:8080"
+      - "{{ envoy_port_ssl }}:4443"
+    env:
+      ENVOY_UID: "101"
+      ENVOY_GID: "101"
+    entrypoint: envoy
+    command: |
+      --config-path /envoy/config/envoy-custom.yaml
+    container_default_behavior: no_defaults
+    networks: "{{ envoy_networks }}"
+    networks_cli_compatible: yes
+    network_mode: default
+  listen: start envoy
