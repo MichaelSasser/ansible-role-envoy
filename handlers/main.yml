@@ -2,7 +2,7 @@
 # handlers file for ansible-role-odoo
 
 - name: Restart Envoy
-  command: "docker restart {{ postgres_container_name }}"
+  command: "docker restart {{ envoy_container_name }}"
   listen: restart envoy
 
 - name: Wait until Envoy starts up
