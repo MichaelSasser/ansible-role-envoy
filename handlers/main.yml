@@ -15,6 +15,7 @@
     ports:
       - "{{ envoy_port }}:8080"
       - "{{ envoy_port_ssl }}:4443"
+      - "{{ envoy_admin_port | default(omit) }}:9901"
     env:
       ENVOY_UID: "101"
       ENVOY_GID: "101"

@@ -7,6 +7,7 @@ envoy_docker_image_tag: v1.20-latest
 envoy_container_name: envoy
 envoy_port: 80
 envoy_port_ssl: 443
+# envoy_admin_port: 9901  # optional
 
 envoy_networks:
   - name: "{{ docker_network_name }}"
