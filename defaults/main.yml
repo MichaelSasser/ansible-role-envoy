@@ -3,7 +3,7 @@
 
 # envoy_docker_image: envoyproxy/envoy-distroless
 envoy_docker_image: envoyproxy/envoy-alpine
-envoy_docker_image_tag: v1.19-latest
+envoy_docker_image_tag: v1.20-latest
 envoy_container_name: envoy
 envoy_port: 80
 envoy_port_ssl: 443
