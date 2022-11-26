@@ -2,26 +2,18 @@
 # tasks file for ansible-role-envoy
 
 - name: Ensure envoy image is pulled
-  docker_image:
+  community.docker.docker_image:
     name: "{{ envoy_docker_image }}"
     tag: "{{ envoy_docker_image_tag }}"
     source: pull
-
-- name: Ensure envoy container is up-to-date
-  docker_container:
-    name: "{{ envoy_container_name }}"
-    image: "{{ envoy_docker_image }}:{{ envoy_docker_image_tag }}"
-    pull: "{{ envoy_upgrade | default(false) | bool }}"
-  notify:
-    - start envoy
 
 # the /envoy/certs dir will be created by volumes later on
 - name: Ensure configuration dir is created
   file:
     path: "/envoy/config"
     state: directory
-  notify:
-    - start envoy
+  # notify:
+  #   - start envoy
 
 - name: Ensure envoy configuration file is copied
   template:
@@ -30,9 +22,18 @@
     owner: "101"
     group: "101"
     mode: 0600
-  notify:
-    - start envoy
+  # notify: # -> hot reload or restart if nor running
+  #   - start envoy
 
+# - name: Ensure envoy secrets config file is copied
+#   template:
+#     src: envoy-secrets.yaml.j2
+#     dest: /envoy/config/secrets.yaml
+#     owner: "101"
+#     group: "101"
+#     mode: 0600
+#   # notify:  # -> hot reload or restart if nor running
+#   #   - start envoy
 - name: Change owner and group of certificates
   ansible.builtin.file:
     path: /etc/letsencrypt/live/
@@ -40,5 +41,87 @@
     group: "101"
     recurse: true
     mode: 0777
+  # notify:  # -> hot reload or restart if nor running
+  #   - start envoy
+
+- name: Ensure envoy container runs
+  community.docker.docker_container:
+    name: "{{ envoy_container_name }}"
+    image: "{{ envoy_docker_image }}:{{ envoy_docker_image_tag }}"
+    # restart_policy: always
+    state: present
+    pull: "{{ envoy_upgrade | default(false) | bool }}"
+    # restart: yes
+    # memory: "{{ envoy_container_memory_limit | default(omit) }}"
+    volumes:
+      - /envoy/config/envoy-custom.yaml:/envoy/config/envoy-custom.yaml:ro
+      # - /envoy/config/envoy-secrets.yaml:/envoy/config/secrets.yaml:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    ports:
+      - "{{ envoy_port }}:8080"
+      # - "[::]:{{ envoy_port }}:8080"
+      - "{{ envoy_port_ssl }}:4443"
+      # - "[::]:{{ envoy_port_ssl }}:4443"
+      - "{{ envoy_port_ssl }}:4443/udp"
+      # - "[::]:{{ envoy_port_ssl }}:4443/udp"
+      - "{{ envoy_admin_port }}:9901"
+      # - "[::]:{{ envoy_admin_port }}:9901"
+    env:
+      ENVOY_UID: "101"
+      ENVOY_GID: "101"
+    entrypoint: envoy
+    command: |
+      --service-node node0 --service-cluster cluster0 --config-path /envoy/config/envoy-custom.yaml
+    container_default_behavior: no_defaults
+    networks: "{{ envoy_networks }}"
+    networks_cli_compatible: yes
+    network_mode: default
+  register: result_container_create
+  # notify:  # -> restart
+  #   - start envoy
+
+# TODO:
+# - if envoy is running -> hot reload
+# - if envoy is not running -> start/restart
+# - if image was updated -> start/restart
+
+- name: Get envoy container infos
+  docker_container_info:
+    name: "{{ envoy_container_name }}"
+  register: result_container_info
+
+- name: Determine whether envoy could be hot-reloaded instead of restarted
+  ansible.builtin.set_fact:
+    envoy_container_is_running: "{{ (true if result_container_info.container['State']['Status'] == 'running' else false) | default(false) | bool }}"
+    envoy_container_has_changed: "{{ true if result_container_create.changed == true else false | bool }}"
+
+- name: Set-up restart/reload policy
+  ansible.builtin.set_fact:
+    envoy_restart_policy: "{{ 'hot-reload' if (envoy_container_is_running == true and envoy_container_has_changed == false) else 'restart' }}"
+
+- name: Reload envoy
+  debug:
+    # msg: Hot-Reloading Envoy  (NOT YET IMPLEMENTED -> RESTARTING)
+    msg: Hot-Reloading is not yet implemented. Restarting instead.
+  changed_when: "'true' == 'true'"
   notify:
-    - start envoy
+    - restart envoy
+  when: envoy_restart_policy == 'hot-reload'
+
+- name: Restart envoy
+  debug:
+    msg: Restarting Envoy
+  changed_when: "'true' == 'true'"
+  notify:
+    # - hot-reload envoy
+    - restart envoy
+  when: envoy_restart_policy == 'restart'
+# - meta: end_play
+
+# - name: Notify envoy to restart
+#   debug:
+#     msg: Restarting Envoy
+#   tags: restart
+#   changed_when: "'true' == 'true'"
+#   notify:
+#     - start envoy

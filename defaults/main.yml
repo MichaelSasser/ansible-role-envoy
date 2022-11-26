@@ -2,12 +2,12 @@
 # defaults file for ansible-role-envoy
 
 # envoy_docker_image: envoyproxy/envoy-distroless
-envoy_docker_image: envoyproxy/envoy-alpine
-envoy_docker_image_tag: v1.20-latest
+envoy_docker_image: envoyproxy/envoy
+envoy_docker_image_tag: v1.24-latest
 envoy_container_name: envoy
 envoy_port: 80
 envoy_port_ssl: 443
-# envoy_admin_port: 9901  # optional
+envoy_admin_port: 9901 # optional
 
 envoy_networks:
   - name: "{{ docker_network_name }}"
@@ -16,3 +16,4 @@ envoy_container_memory_limit: null
 envoy_upgrade: no
 
 envoy_config: null
+envoy_secrets_config: null
