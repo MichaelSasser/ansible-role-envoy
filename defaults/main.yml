@@ -20,19 +20,24 @@ envoy_node_cluster: cluster_0
 
 envoy_config_directory: /envoy/config
 
-envoy_cds_config_path: "{{ envoy_config_directory }}/cds.yaml"
+envoy_config_path: "{{ envoy_config_directory }}/envoy.yaml"
 envoy_lds_config_path: "{{ envoy_config_directory }}/lds.yaml"
+envoy_rds_config_path: "{{ envoy_config_directory }}/rds.yaml"
+envoy_cds_config_path: "{{ envoy_config_directory }}/cds.yaml"
+envoy_eds_config_path: "{{ envoy_config_directory }}/eds.yaml"
 envoy_sds_tls_config_path: "{{ envoy_config_directory }}/sds_tls.yaml"
 envoy_sds_validation_context_config_path: "{{ envoy_config_directory }}/sds_validation_context.yaml"
 
 envoy_admin_interface_socket_address: { address: 0.0.0.0, port_value: 9901 }
 
 envoy_service_config: # Mandatory
-  lds_tcp: null
-  lds_udp: null
-  cds: null
-  sds_tls: null
-  sds_validation_context: null
+  lds_tcp: "{{ null | default(omit) }}"
+  lds_udp: "{{ null | default(omit) }}"
+  rds: "{{ null | default(omit) }}"
+  cds: "{{ null | default(omit) }}"
+  eds: "{{ null | default(omit) }}"
+  sds_tls: "{{ null | default(omit) }}"
+  sds_validation_context: "{{ null | default(omit) }}"
 
 envoy_config:
   ####################################################################
@@ -117,10 +122,6 @@ envoy_config:
             threshold:
               value: 0.98
 
-envoy_cds_config:
-  resources:
-    - "{{ envoy_service_config.cds  | flatten(levels=1) }}"
-
 envoy_lds_config:
   resources:
     ####################################################################
@@ -202,6 +203,20 @@ envoy_lds_config:
       per_connection_buffer_limit_bytes: 32768 # 32 KiB
       filter_chains:
         - "{{ envoy_service_config.lds_udp  | flatten(levels=1) }}"
+
+envoy_rds_config:
+  version_info: "0"
+  resources:
+    - "{{ envoy_service_config.rds  | flatten(levels=1) }}"
+
+envoy_cds_config:
+  resources:
+    - "{{ envoy_service_config.cds  | flatten(levels=1) }}"
+
+envoy_eds_config:
+  version_info: "0"
+  resources:
+    - "{{ envoy_service_config.eds  | flatten(levels=1) }}"
 
 envoy_sds_tls_config:
   resources:

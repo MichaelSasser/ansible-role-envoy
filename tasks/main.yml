@@ -10,7 +10,7 @@
 # the /envoy/certs dir will be created by volumes later on
 - name: Ensure configuration dir is created
   file:
-    path: "/envoy/config"
+    path: "{{ envoy_config_directory }}"
     state: directory
   # notify:
   #   - start envoy
@@ -18,39 +18,56 @@
 - name: Ensure envoy configuration is copied
   template:
     src: envoy.yaml.j2
-    dest: /envoy/config/envoy.yaml
+    dest: "{{ envoy_config_path }}"
     owner: "101"
     group: "101"
     mode: 0600
 
-- name: Ensure cds (cluster discovery service) configuration is copied
-  template:
-    src: cds.yaml.j2
-    dest: /envoy/config/cds.yaml
-    owner: "101"
-    group: "101"
-    mode: 0600
-
-- name: Ensure lds (listender discovery service) configuration is copied
+# Run the template for each entry, make entries named
+- name: Ensure LDS (listender discovery service) configuration is copied
   template:
     src: lds.yaml.j2
-    dest: /envoy/config/lds.yaml
+    dest: "{{ envoy_lds_config_path }}"
     owner: "101"
     group: "101"
     mode: 0600
 
-- name: Ensure sds_tls (secret discovery service) configuration is copied
+- name: Ensure RDS (listender discovery service) configuration is copied
+  template:
+    src: rds.yaml.j2
+    dest: "{{ envoy_rds_config_path }}"
+    owner: "101"
+    group: "101"
+    mode: 0600
+
+- name: Ensure CDS (cluster discovery service) configuration is copied
+  template:
+    src: cds.yaml.j2
+    dest: "{{ envoy_cds_config_path }}"
+    owner: "101"
+    group: "101"
+    mode: 0600
+
+- name: Ensure EDS (endpoint discovery service) configuration is copied
+  template:
+    src: eds.yaml.j2
+    dest: "{{ envoy_eds_config_path }}"
+    owner: "101"
+    group: "101"
+    mode: 0600
+
+- name: Ensure SDS_tls (secret discovery service) configuration is copied
   template:
     src: sds_tls.yaml.j2
-    dest: /envoy/config/sds_tls.yaml
+    dest: "{{ envoy_sds_tls_config_path }}"
     owner: "101"
     group: "101"
     mode: 0600
 
-- name: Ensure sds_validation_context (secret discovery service) configuration is copied
+- name: Ensure SDS_validation_context (secret discovery service) configuration is copied
   template:
     src: sds_validation_context.yaml.j2
-    dest: /envoy/config/sds_validation_context.yaml
+    dest: "{{ envoy_sds_validation_context_config_path }}"
     owner: "101"
     group: "101"
     mode: 0600
@@ -73,11 +90,7 @@
     # restart: yes
     # memory: "{{ envoy_container_memory_limit | default(omit) }}"
     volumes:
-      - /envoy/config/envoy.yaml:/envoy/config/envoy.yaml:ro
-      - /envoy/config/cds.yaml:/envoy/config/cds.yaml:ro
-      - /envoy/config/lds.yaml:/envoy/config/lds.yaml:ro
-      - /envoy/config/sds_tls.yaml:/envoy/config/sds_tls.yaml:ro
-      - /envoy/config/sds_validation_context.yaml:/envoy/config/sds_validation_context.yaml:ro
+      - "{{ envoy_config_directory }}:/envoy/config:ro"
       - /etc/letsencrypt:/etc/letsencrypt:ro
     ports:
       - "{{ envoy_port }}:8080"
@@ -93,7 +106,7 @@
       ENVOY_GID: "101"
     entrypoint: envoy
     command: |
-      --config-path /envoy/config/envoy.yaml
+      "--config-path {{ envoy_config_path }}"
     container_default_behavior: no_defaults
     networks: "{{ envoy_networks }}"
     networks_cli_compatible: yes
