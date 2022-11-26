@@ -15,25 +15,38 @@
   # notify:
   #   - start envoy
 
-- name: Ensure envoy configuration file is copied
+- name: Ensure envoy configuration is copied
   template:
-    src: envoy-custom.yaml.j2
-    dest: /envoy/config/envoy-custom.yaml
+    src: envoy.yaml.j2
+    dest: /envoy/config/envoy.yaml
     owner: "101"
     group: "101"
     mode: 0600
-  # notify: # -> hot reload or restart if nor running
-  #   - start envoy
 
-# - name: Ensure envoy secrets config file is copied
-#   template:
-#     src: envoy-secrets.yaml.j2
-#     dest: /envoy/config/secrets.yaml
-#     owner: "101"
-#     group: "101"
-#     mode: 0600
-#   # notify:  # -> hot reload or restart if nor running
-#   #   - start envoy
+- name: Ensure cds (cluster discovery service) configuration is copied
+  template:
+    src: cds.yaml.j2
+    dest: /envoy/config/cds.yaml
+    owner: "101"
+    group: "101"
+    mode: 0600
+
+- name: Ensure lds (listender discovery service) configuration is copied
+  template:
+    src: lds.yaml.j2
+    dest: /envoy/config/lds.yaml
+    owner: "101"
+    group: "101"
+    mode: 0600
+
+- name: Ensure sds (secret discovery service) configuration is copied
+  template:
+    src: sds.yaml.j2
+    dest: /envoy/config/sds.yaml
+    owner: "101"
+    group: "101"
+    mode: 0600
+
 - name: Change owner and group of certificates
   ansible.builtin.file:
     path: /etc/letsencrypt/live/
@@ -41,8 +54,6 @@
     group: "101"
     recurse: true
     mode: 0777
-  # notify:  # -> hot reload or restart if nor running
-  #   - start envoy
 
 - name: Ensure envoy container runs
   community.docker.docker_container:
@@ -54,8 +65,10 @@
     # restart: yes
     # memory: "{{ envoy_container_memory_limit | default(omit) }}"
     volumes:
-      - /envoy/config/envoy-custom.yaml:/envoy/config/envoy-custom.yaml:ro
-      # - /envoy/config/envoy-secrets.yaml:/envoy/config/secrets.yaml:ro
+      - /envoy/config/envoy.yaml:/envoy/config/envoy.yaml:ro
+      - /envoy/config/cds.yaml:/envoy/config/cds.yaml:ro
+      - /envoy/config/lds.yaml:/envoy/config/lds.yaml:ro
+      - /envoy/config/sds.yaml:/envoy/config/sds.yaml:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
     ports:
       - "{{ envoy_port }}:8080"
@@ -71,7 +84,7 @@
       ENVOY_GID: "101"
     entrypoint: envoy
     command: |
-      --service-node node0 --service-cluster cluster0 --config-path /envoy/config/envoy-custom.yaml
+      --config-path /envoy/config/envoy.yaml
     container_default_behavior: no_defaults
     networks: "{{ envoy_networks }}"
     networks_cli_compatible: yes
