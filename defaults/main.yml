@@ -18,9 +18,12 @@ envoy_admin_port: 9901
 envoy_node_id: id_0
 envoy_node_cluster: cluster_0
 
-envoy_cds_config_path: /envoy/config/cds.yaml
-envoy_lds_config_path: /envoy/config/lds.yaml
-envoy_sds_config_path: /envoy/config/sds.yaml
+envoy_config_directory: /envoy/config
+
+envoy_cds_config_path: "{{ envoy_config_directory }}/cds.yaml"
+envoy_lds_config_path: "{{ envoy_config_directory }}/lds.yaml"
+envoy_sds_tls_config_path: "{{ envoy_config_directory }}/sds_tls.yaml"
+envoy_sds_validation_context_config_path: "{{ envoy_config_directory }}/sds_validation_context.yaml"
 
 envoy_admin_interface_socket_address: { address: 0.0.0.0, port_value: 9901 }
 
@@ -28,7 +31,8 @@ envoy_service_config: # Mandatory
   lds_tcp: null
   lds_udp: null
   cds: null
-  sds: null
+  sds_tls: null
+  sds_validation_context: null
 
 envoy_config:
   ####################################################################
@@ -43,14 +47,17 @@ envoy_config:
   ####################################################################
   dynamic_resources:
     cds_config:
+      resource_api_version: V3
       path_config_source:
         path: "{{ envoy_cds_config_path }}"
+        watched_directory:
+          path: "{{ envoy_config_directory }}"
     lds_config:
+      resource_api_version: V3
       path_config_source:
         path: "{{ envoy_lds_config_path }}"
-    # sds_config:
-    #   path_config_source:
-    #     path: "{{ envoy_sds_config_path }}"
+        watched_directory:
+          path: "{{ envoy_config_directory }}"
 
   ####################################################################
   # ADMIN INTERFACE
@@ -63,11 +70,11 @@ envoy_config:
   # STATIC RESOURCES
   ####################################################################
   static_resources:
-    ####################################################################
-    # SECRETS CONFIGURATION
-    ####################################################################
-    secrets:
-      - "{{ envoy_service_config.secrets  | flatten(levels=1) }}"
+    # ####################################################################
+    # # SECRETS CONFIGURATION
+    # ####################################################################
+    # secrets:
+    #   - "{{ envoy_service_config.secrets  | flatten(levels=1) }}"
 
   ####################################################################
   # RUNTIME LAYER
@@ -196,6 +203,10 @@ envoy_lds_config:
       filter_chains:
         - "{{ envoy_service_config.lds_udp  | flatten(levels=1) }}"
 
-envoy_sds_config:
-  secrets:
-    - "{{ envoy_service_config.secrets  | flatten(levels=1) }}"
+envoy_sds_tls_config:
+  resources:
+    - "{{ envoy_service_config.sds_tls  | flatten(levels=1) }}"
+
+envoy_sds_validation_context_config:
+  resources:
+    - "{{ envoy_service_config.sds_validation_context  | flatten(levels=1) }}"

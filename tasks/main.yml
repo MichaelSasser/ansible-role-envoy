@@ -39,10 +39,18 @@
     group: "101"
     mode: 0600
 
-- name: Ensure sds (secret discovery service) configuration is copied
+- name: Ensure sds_tls (secret discovery service) configuration is copied
   template:
-    src: sds.yaml.j2
-    dest: /envoy/config/sds.yaml
+    src: sds_tls.yaml.j2
+    dest: /envoy/config/sds_tls.yaml
+    owner: "101"
+    group: "101"
+    mode: 0600
+
+- name: Ensure sds_validation_context (secret discovery service) configuration is copied
+  template:
+    src: sds_validation_context.yaml.j2
+    dest: /envoy/config/sds_validation_context.yaml
     owner: "101"
     group: "101"
     mode: 0600
@@ -68,7 +76,8 @@
       - /envoy/config/envoy.yaml:/envoy/config/envoy.yaml:ro
       - /envoy/config/cds.yaml:/envoy/config/cds.yaml:ro
       - /envoy/config/lds.yaml:/envoy/config/lds.yaml:ro
-      - /envoy/config/sds.yaml:/envoy/config/sds.yaml:ro
+      - /envoy/config/sds_tls.yaml:/envoy/config/sds_tls.yaml:ro
+      - /envoy/config/sds_validation_context.yaml:/envoy/config/sds_validation_context.yaml:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
     ports:
       - "{{ envoy_port }}:8080"
