@@ -15,62 +15,25 @@
   # notify:
   #   - start envoy
 
-- name: Ensure envoy configuration is copied
-  template:
-    src: envoy.yaml.j2
-    dest: "{{ envoy_config_path }}"
-    owner: "101"
-    group: "101"
-    mode: 0600
+# - name: xDS debug
+#   ansible.builtin.debug:
+#     msg: "{{ envoy_xds_config }}"
 
-# Run the template for each entry, make entries named
-- name: Ensure LDS (listender discovery service) configuration is copied
-  template:
-    src: lds.yaml.j2
-    dest: "{{ envoy_lds_config_path }}"
-    owner: "101"
-    group: "101"
-    mode: 0600
+# - name: xDS debug loop
+#   ansible.builtin.debug:
+#     msg: "{{ item.data }}"
+#   loop: "{{ envoy_xds_config |flatten(levels=1) }}"
 
-- name: Ensure RDS (listender discovery service) configuration is copied
+- name: Ensure xDS configuration is copied
   template:
-    src: rds.yaml.j2
-    dest: "{{ envoy_rds_config_path }}"
+    src: "{{ item.config }}.yaml.j2"
+    dest: "{{ item.dest }}"
     owner: "101"
     group: "101"
     mode: 0600
+  loop: "{{ envoy_xds_config }}"
 
-- name: Ensure CDS (cluster discovery service) configuration is copied
-  template:
-    src: cds.yaml.j2
-    dest: "{{ envoy_cds_config_path }}"
-    owner: "101"
-    group: "101"
-    mode: 0600
-
-- name: Ensure EDS (endpoint discovery service) configuration is copied
-  template:
-    src: eds.yaml.j2
-    dest: "{{ envoy_eds_config_path }}"
-    owner: "101"
-    group: "101"
-    mode: 0600
-
-- name: Ensure SDS_tls (secret discovery service) configuration is copied
-  template:
-    src: sds_tls.yaml.j2
-    dest: "{{ envoy_sds_tls_config_path }}"
-    owner: "101"
-    group: "101"
-    mode: 0600
-
-- name: Ensure SDS_validation_context (secret discovery service) configuration is copied
-  template:
-    src: sds_validation_context.yaml.j2
-    dest: "{{ envoy_sds_validation_context_config_path }}"
-    owner: "101"
-    group: "101"
-    mode: 0600
+# - meta: end_play
 
 - name: Change owner and group of certificates
   ansible.builtin.file:

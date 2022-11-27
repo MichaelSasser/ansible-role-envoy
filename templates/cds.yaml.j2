@@ -1,2 +1,6 @@
+{% if item.data | length > 0 %}
 --- 
-{{ envoy_cds_config | to_nice_yaml }}
+
+resources:
+  {{ item.data | to_nice_yaml(indent=2) | trim | indent(2)}}
+{% endif %}

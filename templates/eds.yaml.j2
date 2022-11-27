@@ -1,2 +1,7 @@
+{% if item.data | length > 0 %}
 --- 
-{{ envoy_eds_config | to_nice_yaml }}
+
+version_info: "0"
+resources:
+  {{ item.data | to_nice_yaml(indent=2) | trim | indent(2)}}
+{% endif %}
