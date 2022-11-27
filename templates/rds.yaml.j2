@@ -1,7 +1,0 @@
-{% if item.data | length > 0 %}
---- 
-
-version_info: "0"
-resources:
-  {{ item.data | to_nice_yaml(indent=2) | trim | indent(2) }}
-{% endif %}

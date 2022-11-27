@@ -7,26 +7,31 @@
     tag: "{{ envoy_docker_image_tag }}"
     source: pull
 
-# the /envoy/certs dir will be created by volumes later on
-- name: Ensure configuration dir is created
-  file:
-    path: "{{ envoy_config_directory }}"
+- name: Ensure configuration directories are created
+  ansible.builtin.file:
+    path: "{{ item.dest | dirname }}"
     state: directory
-  # notify:
-  #   - start envoy
+  loop: "{{ envoy_xds_config }}"
 
-# - name: xDS debug
-#   ansible.builtin.debug:
-#     msg: "{{ envoy_xds_config }}"
+- name: Ensure envoy configuration is copied
+  ansible.builtin.template:
+    src: "{{ role_path }}/templates/envoy.yaml.j2"
+    dest: "{{ envoy_static_conf_path }}"
+    owner: "101"
+    group: "101"
+    mode: 0600
+  notify:
+    - restart envoy
 
 # - name: xDS debug loop
 #   ansible.builtin.debug:
 #     msg: "{{ item.data }}"
 #   loop: "{{ envoy_xds_config |flatten(levels=1) }}"
 
+# Don't notify to restart. The configuration is reloaded automatically
 - name: Ensure xDS configuration is copied
-  template:
-    src: "{{ item.config }}.yaml.j2"
+  ansible.builtin.template:
+    src: "{{ role_path }}/templates/{{ item.template }}.yaml.j2"
     dest: "{{ item.dest }}"
     owner: "101"
     group: "101"
@@ -53,7 +58,7 @@
     # restart: yes
     # memory: "{{ envoy_container_memory_limit | default(omit) }}"
     volumes:
-      - "{{ envoy_config_directory }}:/envoy/config:ro"
+      - "{{ envoy_conf_dir }}:/envoy/config:ro"
       - /etc/letsencrypt:/etc/letsencrypt:ro
     ports:
       - "{{ envoy_port }}:8080"
@@ -69,57 +74,11 @@
       ENVOY_GID: "101"
     entrypoint: envoy
     command: |
-      "--config-path {{ envoy_config_path }}"
+      "--config-path {{ envoy_static_conf_path }}"
     container_default_behavior: no_defaults
     networks: "{{ envoy_networks }}"
     networks_cli_compatible: yes
     network_mode: default
   register: result_container_create
-  # notify:  # -> restart
-  #   - start envoy
-
-# TODO:
-# - if envoy is running -> hot reload
-# - if envoy is not running -> start/restart
-# - if image was updated -> start/restart
-
-- name: Get envoy container infos
-  docker_container_info:
-    name: "{{ envoy_container_name }}"
-  register: result_container_info
-
-- name: Determine whether envoy could be hot-reloaded instead of restarted
-  ansible.builtin.set_fact:
-    envoy_container_is_running: "{{ (true if result_container_info.container['State']['Status'] == 'running' else false) | default(false) | bool }}"
-    envoy_container_has_changed: "{{ true if result_container_create.changed == true else false | bool }}"
-
-- name: Set-up restart/reload policy
-  ansible.builtin.set_fact:
-    envoy_restart_policy: "{{ 'hot-reload' if (envoy_container_is_running == true and envoy_container_has_changed == false) else 'restart' }}"
-
-- name: Reload envoy
-  debug:
-    # msg: Hot-Reloading Envoy  (NOT YET IMPLEMENTED -> RESTARTING)
-    msg: Hot-Reloading is not yet implemented. Restarting instead.
-  changed_when: "'true' == 'true'"
-  notify:
+  notify: # -> restart
     - restart envoy
-  when: envoy_restart_policy == 'hot-reload'
-
-- name: Restart envoy
-  debug:
-    msg: Restarting Envoy
-  changed_when: "'true' == 'true'"
-  notify:
-    # - hot-reload envoy
-    - restart envoy
-  when: envoy_restart_policy == 'restart'
-# - meta: end_play
-
-# - name: Notify envoy to restart
-#   debug:
-#     msg: Restarting Envoy
-#   tags: restart
-#   changed_when: "'true' == 'true'"
-#   notify:
-#     - start envoy

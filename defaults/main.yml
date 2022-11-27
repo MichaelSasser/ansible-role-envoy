@@ -18,48 +18,61 @@ envoy_admin_port: 9901
 envoy_node_id: id_0
 envoy_node_cluster: cluster_0
 
-envoy_config_directory: /envoy/config
+envoy_conf_dir: /envoy/config
 
-envoy_config_path: "{{ envoy_config_directory }}/envoy.yaml"
-envoy_lds_config_path: "{{ envoy_config_directory }}/lds.yaml"
-envoy_cds_config_path: "{{ envoy_config_directory }}/cds.yaml"
+envoy_lds_base_dir: "{{ envoy_conf_dir }}/lds/"
+envoy_cds_base_dir: "{{ envoy_conf_dir }}/cds/"
+envoy_rds_base_dir: "{{ envoy_conf_dir }}/rds/"
+envoy_eds_base_dir: "{{ envoy_conf_dir }}/eds/"
+envoy_sds_tls_base_dir: "{{ envoy_conf_dir }}/sds_tls/"
+envoy_sds_valid_base_dir: "{{ envoy_conf_dir }}/sds_valid/"
+
+envoy_static_conf_path: "{{ envoy_conf_dir }}/envoy.yaml"
+envoy_lds_config_path: "{{ envoy_lds_base_dir }}/lds.yaml"
+envoy_cds_config_path: "{{ envoy_cds_base_dir }}/cds.yaml"
 
 envoy_admin_interface_socket_address: { address: 0.0.0.0, port_value: 9901 }
 
-envoy_service_config: # Mandatory
+envoy_conf: # Mandatory
   lds: ""
   rds: ""
   cds: ""
   eds: ""
   sds_tls: ""
-  sds_validation_context: ""
+  sds_valid: ""
 
+# This is meant as an simple preset for a single application with one route
+# If you need anything more compex, create your own envoy_xds_conig
 envoy_xds_config:
-  - config: envoy
-    dest: "{{ envoy_config_path }}"
-    data: "{{ envoy_config }}"
-  - config: lds
+  # LDS (only one file)
+  - template: lds_https2_and_http3
     dest: "{{ envoy_lds_config_path }}"
     data:
-      udp: "{{ envoy_service_config.lds_udp  | flatten(levels=1) }}"
-      tcp: "{{ envoy_service_config.lds_tcp  | flatten(levels=1) }}"
-  - config: rds
-    dest: "{{ envoy_config_directory }}/rds.yaml"
-    data: "{{ envoy_service_config.rds  | flatten(levels=1) }}"
-  - config: cds
+      udp: "{{ envoy_conf.lds_udp  | flatten(levels=1) }}"
+      tcp: "{{ envoy_conf.lds_tcp  | flatten(levels=1) }}"
+  # RDS
+  - template: xds_v0
+    dest: "{{ envoy_rds_base_dir }}/rds.yaml"
+    data: "{{ envoy_conf.rds  | flatten(levels=1) }}"
+  # CDS (only one file)
+  - template: xds
     dest: "{{ envoy_cds_config_path }}"
-    data: "{{ envoy_service_config.cds  | flatten(levels=1) }}"
-  - config: eds
-    dest: "{{ envoy_config_directory }}/eds.yaml"
-    data: "{{ envoy_service_config.eds  | flatten(levels=1) }}"
-  - config: sds
-    dest: "{{ envoy_config_directory }}/sds_tls.yaml"
-    data: "{{ envoy_service_config.sds_tls  | flatten(levels=1) }}"
-  - config: sds
-    dest: "{{ envoy_config_directory }}/sds_validation_context.yaml"
-    data: "{{ envoy_service_config.sds_validation_context  | flatten(levels=1) }}"
+    data: "{{ envoy_conf.cds  | flatten(levels=1) }}"
+  # EDS
+  - template: xds_v0
+    dest: "{{ envoy_eds_base_dir }}/eds.yaml"
+    data: "{{ envoy_conf.eds  | flatten(levels=1) }}"
+  # SDS TLS
+  - template: xds
+    dest: "{{ envoy_sds_tls_base_dir }}/sds_tls.yaml"
+    data: "{{ envoy_conf.sds_tls  | flatten(levels=1) }}"
+  # SDS VALIDATION CONTENT
+  - template: xds
+    dest: "{{ envoy_sds_valid_base_dir }}/sds_valid.yaml"
+    data: "{{ envoy_conf.sds_valid  | flatten(levels=1) }}"
+  # ADS (only one file)
 
-envoy_config:
+envoy_static_conf:
   ####################################################################
   # NODE CONFIGURATION
   ####################################################################
@@ -76,13 +89,13 @@ envoy_config:
       path_config_source:
         path: "{{ envoy_cds_config_path }}"
         watched_directory:
-          path: "{{ envoy_config_directory }}"
+          path: "{{ envoy_conf_dir }}"
     lds_config:
       resource_api_version: V3
       path_config_source:
         path: "{{ envoy_lds_config_path }}"
         watched_directory:
-          path: "{{ envoy_config_directory }}"
+          path: "{{ envoy_conf_dir }}"
 
   ####################################################################
   # ADMIN INTERFACE
