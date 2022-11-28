@@ -7,11 +7,26 @@
     tag: "{{ envoy_docker_image_tag }}"
     source: pull
 
+# - name: xDS debug loop
+#   ansible.builtin.debug:
+#     msg: "{{ item }}"
+#   when: item.dest is defined
+#   loop: "{{ envoy_xds_config | default([])}}"
+
+# - meta: end_play
+
 - name: Ensure configuration directories are created
   ansible.builtin.file:
     path: "{{ item.dest | dirname }}"
     state: directory
-  loop: "{{ envoy_xds_config }}"
+  loop: "{{ envoy_xds_config | default([]) }}"
+  when: item.dest is defined
+
+- name: xDS debug loop
+  ansible.builtin.debug:
+    msg: "{{ item }}"
+  when: item.dest is defined
+  loop: "{{ envoy_xds_config | default([])}}"
 
 - name: Ensure envoy configuration is copied
   ansible.builtin.template:
@@ -36,7 +51,8 @@
     owner: "101"
     group: "101"
     mode: 0600
-  loop: "{{ envoy_xds_config }}"
+  loop: "{{ envoy_xds_config | default([]) }}"
+  when: item is defined
 
 # - meta: end_play
 

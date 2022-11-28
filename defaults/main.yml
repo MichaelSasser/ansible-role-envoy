@@ -20,12 +20,12 @@ envoy_node_cluster: cluster_0
 
 envoy_conf_dir: /envoy/config
 
-envoy_lds_base_dir: "{{ envoy_conf_dir }}/lds/"
-envoy_cds_base_dir: "{{ envoy_conf_dir }}/cds/"
-envoy_rds_base_dir: "{{ envoy_conf_dir }}/rds/"
-envoy_eds_base_dir: "{{ envoy_conf_dir }}/eds/"
-envoy_sds_tls_base_dir: "{{ envoy_conf_dir }}/sds_tls/"
-envoy_sds_valid_base_dir: "{{ envoy_conf_dir }}/sds_valid/"
+envoy_lds_base_dir: "{{ envoy_conf_dir }}/lds"
+envoy_cds_base_dir: "{{ envoy_conf_dir }}/cds"
+envoy_rds_base_dir: "{{ envoy_conf_dir }}/rds"
+envoy_eds_base_dir: "{{ envoy_conf_dir }}/eds"
+envoy_sds_tls_base_dir: "{{ envoy_conf_dir }}/sds_tls"
+envoy_sds_valid_base_dir: "{{ envoy_conf_dir }}/sds_valid"
 
 envoy_static_conf_path: "{{ envoy_conf_dir }}/envoy.yaml"
 envoy_lds_config_path: "{{ envoy_lds_base_dir }}/lds.yaml"
@@ -33,44 +33,50 @@ envoy_cds_config_path: "{{ envoy_cds_base_dir }}/cds.yaml"
 
 envoy_admin_interface_socket_address: { address: 0.0.0.0, port_value: 9901 }
 
-envoy_conf: # Mandatory
-  lds: ""
-  rds: ""
-  cds: ""
-  eds: ""
-  sds_tls: ""
-  sds_valid: ""
+# envoy_conf:
+#   lds: []
+#   rds: []
+#   cds: []
+#   eds: []
+#   sds_tls: []
+#   sds_valid: []
+
+envox_xds_config_additional: []
 
 # This is meant as an simple preset for a single application with one route
-# If you need anything more compex, create your own envoy_xds_conig
-envoy_xds_config:
+# If you need anything more compex, create a "envox_xds_config_additional"
+# to append add more elements to the preset or create your own
+# "envoy_xds_conig"
+envoy_xds_config_preset:
   # LDS (only one file)
   - template: lds_https2_and_http3
     dest: "{{ envoy_lds_config_path }}"
     data:
-      udp: "{{ envoy_conf.lds_udp  | flatten(levels=1) }}"
-      tcp: "{{ envoy_conf.lds_tcp  | flatten(levels=1) }}"
+      udp: "{{ envoy_conf.lds_udp  | default([]) | flatten(levels=1) }}"
+      tcp: "{{ envoy_conf.lds_tcp  | default([]) | flatten(levels=1) }}"
   # RDS
   - template: xds_v0
     dest: "{{ envoy_rds_base_dir }}/rds.yaml"
-    data: "{{ envoy_conf.rds  | flatten(levels=1) }}"
+    data: "{{ envoy_conf.rds | default([])  | flatten(levels=1) }}"
   # CDS (only one file)
   - template: xds
     dest: "{{ envoy_cds_config_path }}"
-    data: "{{ envoy_conf.cds  | flatten(levels=1) }}"
+    data: "{{ envoy_conf.cds | default([])  | flatten(levels=1) }}"
   # EDS
   - template: xds_v0
     dest: "{{ envoy_eds_base_dir }}/eds.yaml"
-    data: "{{ envoy_conf.eds  | flatten(levels=1) }}"
+    data: "{{ envoy_conf.eds  | default([]) | flatten(levels=1) }}"
   # SDS TLS
   - template: xds
     dest: "{{ envoy_sds_tls_base_dir }}/sds_tls.yaml"
-    data: "{{ envoy_conf.sds_tls  | flatten(levels=1) }}"
+    data: "{{ envoy_conf.sds_tls  | default([]) | flatten(levels=1) }}"
   # SDS VALIDATION CONTENT
   - template: xds
     dest: "{{ envoy_sds_valid_base_dir }}/sds_valid.yaml"
-    data: "{{ envoy_conf.sds_valid  | flatten(levels=1) }}"
-  # ADS (only one file)
+    data: "{{ envoy_conf.sds_valid  | default([]) | flatten(levels=1) }}"
+
+# merge preset with additional config
+envoy_xds_config: "{{ envoy_xds_config_preset | community.general.lists_mergeby(envox_xds_config_additional, 'dest') }}"
 
 envoy_static_conf:
   ####################################################################
